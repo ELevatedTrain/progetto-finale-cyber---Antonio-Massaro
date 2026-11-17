@@ -18,6 +18,8 @@ Route::get('/articles/category/{category}', [ArticleController::class, 'byCatego
 Route::get('/articles/user/{user}', [ArticleController::class, 'byUser'])->name('articles.byUser');
 //Route::get('/articles/search', [ArticleController::class, 'articleSearch'])->name('articles.search');
 Route::get('/articles/search', [ArticleController::class, 'articleSearch'])->middleware('throttle:article-search')->name('articles.search');
+Route::view('/profilo', 'profile.edit')->middleware('auth')->name('profile.edit');
+
 // Writer routes
 Route::middleware('writer')->group(function(){
     Route::get('/articles/create', [ArticleController::class, 'create'])->name('articles.create');
