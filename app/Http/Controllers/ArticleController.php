@@ -33,11 +33,13 @@ class ArticleController extends Controller implements HasMiddleware
         return view('articles.index', compact('articles'));
     }
 
-    public function create()
-    {
-        return view('articles.create');
-    }
+   public function create()
+{
+    $oldBody = old('body');
+    $safeBody = is_string($oldBody) ? $this->sanitizeBody($oldBody) : '';
 
+    return view('articles.create', compact('safeBody'));
+}
     public function store(Request $request)
     {
         $request->validate([
@@ -83,11 +85,20 @@ class ArticleController extends Controller implements HasMiddleware
     }
 
     public function show(Article $article)
-    {
-        $safeBody = $this->sanitizeBody((string) $article->body);
+{
+    $user = Auth::user();
 
-        return view('articles.show', compact('article', 'safeBody'));
+    if (
+        !$article->is_accepted
+        && (!$user || ($user->id != $article->user_id && !$user->is_revisor))
+    ) {
+        abort(404);
     }
+
+    $safeBody = $this->sanitizeBody((string) $article->body);
+
+    return view('articles.show', compact('article', 'safeBody'));
+}
 
     public function edit(Article $article)
     {
@@ -102,6 +113,9 @@ class ArticleController extends Controller implements HasMiddleware
 
     public function update(Request $request, Article $article)
     {
+        if (Auth::id() != $article->user_id) {
+        return redirect()->route('homepage')->with('alert', 'Accesso non consentito');
+}
         $request->validate([
             'title' => 'required|min:5|unique:articles,title,' . $article->id,
             'subtitle' => 'required|min:5',
@@ -155,6 +169,9 @@ class ArticleController extends Controller implements HasMiddleware
 
     public function destroy(Article $article)
     {
+        if (Auth::id() != $article->user_id) {
+        return redirect()->route('homepage')->with('alert', 'Accesso non consentito');
+}
         foreach ($article->tags as $tag) {
             $article->tags()->detach($tag);
         }
