@@ -59,7 +59,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="body" class="form-label">Text</label>
-                        <textarea name="body" class="form-control" id="body" cols="30" rows="7">{{$article->body}}</textarea>
+                        <textarea name="body" class="form-control" id="body" cols="30" rows="7">{{ $safeBody }}</textarea>
                         @error('body')
                             <span class="text-danger">{{$message}}</span>
                         @enderror

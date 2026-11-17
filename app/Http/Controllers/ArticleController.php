@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HtmlSanitizer\HtmlSanitizer;
+use Symfony\Component\HtmlSanitizer\HtmlSanitizerConfig;
 
 class ArticleController extends Controller implements HasMiddleware
 {
@@ -40,16 +43,18 @@ class ArticleController extends Controller implements HasMiddleware
         $request->validate([
             'title' => 'required|unique:articles|min:5',
             'subtitle' => 'required|min:5',
-            'body' => 'required|min:10',
+            'body' => 'required|string|min:10',
             'image' => 'required|image',
             'category' => 'required',
             'tags' => 'required',
         ]);
 
+        $body = $this->validatedBody($request->input('body'));
+
         $article = Article::create([
             'title' => $request->title,
             'subtitle' => $request->subtitle,
-            'body' => $request->body,
+            'body' => $body,
             'image' => $request->file('image')->store('public/images'),
             'category_id' => $request->category,
             'user_id' => Auth::user()->id,
@@ -79,7 +84,9 @@ class ArticleController extends Controller implements HasMiddleware
 
     public function show(Article $article)
     {
-        return view('articles.show', compact('article'));
+        $safeBody = $this->sanitizeBody((string) $article->body);
+
+        return view('articles.show', compact('article', 'safeBody'));
     }
 
     public function edit(Article $article)
@@ -88,7 +95,9 @@ class ArticleController extends Controller implements HasMiddleware
             return redirect()->route('homepage')->with('alert', 'Accesso non consentito');
         }
 
-        return view('articles.edit', compact('article'));
+        $safeBody = $this->sanitizeBody((string) $article->body);
+
+    return view('articles.edit', compact('article', 'safeBody'));
     }
 
     public function update(Request $request, Article $article)
@@ -96,16 +105,18 @@ class ArticleController extends Controller implements HasMiddleware
         $request->validate([
             'title' => 'required|min:5|unique:articles,title,' . $article->id,
             'subtitle' => 'required|min:5',
-            'body' => 'required|min:10',
+            'body' => 'required|string|min:10',
             'image' => 'image',
             'category' => 'required',
             'tags' => 'required',
         ]);
 
+        $body = $this->validatedBody($request->input('body'));
+
         $article->update([
             'title' => $request->title,
             'subtitle' => $request->subtitle,
-            'body' => $request->body,
+            'body' => $body,
             'category_id' => $request->category,
             'slug' => Str::slug($request->title),
         ]);
@@ -178,5 +189,29 @@ class ArticleController extends Controller implements HasMiddleware
         $articles = Article::search($query)->where('is_accepted', true)->orderBy('created_at', 'desc')->get();
 
         return view('articles.search-index', compact('articles', 'query'));
+    }
+
+    private function validatedBody(string $html): string
+    {
+        $body = $this->sanitizeBody($html);
+        $text = html_entity_decode(strip_tags($body), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = trim(str_replace("\u{00A0}", ' ', $text));
+
+        if (mb_strlen($text) < 10) {
+            throw ValidationException::withMessages([
+                'body' => 'Il corpo dell’articolo deve contenere almeno 10 caratteri di testo.',
+            ]);
+        }
+
+        return $body;
+    }
+
+    private function sanitizeBody(string $html): string
+    {
+        $sanitizer = new HtmlSanitizer(
+            (new HtmlSanitizerConfig())->allowSafeElements()
+        );
+
+        return $sanitizer->sanitize($html);
     }
 }
