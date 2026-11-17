@@ -18,15 +18,31 @@ class LatestNews extends Component
     }
 
     public function fetchNews()
-    {
-        if (filter_var($this->selectedApi, FILTER_VALIDATE_URL) === FALSE) {
-            $this->news = 'Invalid URL';
-            return;
-        }
+{
+    $this->news = null;
+    $country = $this->selectedApi;
 
-        $this->news = json_decode($this->httpService->getRequest($this->selectedApi), true);
-
+    if (!is_string($country) || !in_array($country, ['it', 'gb', 'us'], true)) {
+        return;
     }
+
+    $apiKey = config('services.newsapi.api_key');
+
+    if (!is_string($apiKey) || $apiKey === '') {
+        return;
+    }
+
+    $query = http_build_query([
+        'country' => $country,
+        'apiKey' => $apiKey,
+    ]);
+
+    $response = $this->httpService->getRequest(
+        'https://newsapi.org/v2/top-headlines?' . $query
+    );
+
+    $this->news = json_decode($response, true);
+}
     public function render()
     {
         return view('livewire.latest-news');

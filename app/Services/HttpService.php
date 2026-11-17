@@ -3,14 +3,14 @@
 namespace App\Services;
 
 use GuzzleHttp\Client;
-use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\GuzzleException;
 
 class HttpService
 {
     protected $client;
-    protected $allowedDomains = ['internal.finance','newsapi.org'];
+    protected $allowedDomains = ['internal.finance', 'newsapi.org'];
     protected $allowedProtocols = ['http', 'https'];
-    protected $refererHeader; // Intestazione Referer
+    protected $refererHeader;
 
     public function __construct()
     {
@@ -21,25 +21,39 @@ class HttpService
     public function getRequest($url)
     {
         $parsedUrl = parse_url($url);
+        $scheme = strtolower($parsedUrl['scheme'] ?? '');
+        $host = strtolower($parsedUrl['host'] ?? '');
 
-        // Validate protocol
-        if (!in_array($parsedUrl['scheme'], $this->allowedProtocols)) {
+        if (!in_array($scheme, $this->allowedProtocols, true)) {
             return 'Protocol not allowed';
         }
-       
-        // Validate domain
-        if (!isset($parsedUrl['host']) || !in_array($parsedUrl['host'], $this->allowedDomains)) {
+
+        if (!in_array($host, $this->allowedDomains, true)) {
             return 'Domain not allowed';
         }
 
-        // Aggiungi l'intestazione Referer per le richieste al server locale
-        $options['headers'] = ['Referer' => $this->refererHeader];
+        if ($host === 'internal.finance' && !auth()->user()?->is_admin) {
+            abort(403, 'Accesso alla Financial App riservato agli amministratori.');
+        }
+
+        $options = [
+            'allow_redirects' => false,
+        ];
+
+        if ($host === 'internal.finance') {
+            $options['headers'] = ['Referer' => $this->refererHeader];
+        }
 
         try {
             $response = $this->client->request('GET', $url, $options);
+
+            if ($response->getStatusCode() >= 300) {
+                return 'Unexpected HTTP response';
+            }
+
             return $response->getBody()->getContents();
-        } catch (RequestException $e) {
-            return 'Something went wrong: ' . $e->getMessage();
+        } catch (GuzzleException) {
+            return 'Something went wrong';
         }
     }
 }
