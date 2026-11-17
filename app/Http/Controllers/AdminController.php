@@ -54,26 +54,50 @@ class AdminController extends Controller
         return view('admin.dashboard', compact('adminRequests', 'revisorRequests', 'writerRequests','financialData'));
     }
 
-    public function setAdmin(User $user){
-        $user->is_admin = true;
-        $user->save();
+public function setAdmin(User $user)
+{
+    $user->is_admin = true;
 
-        return redirect(route('admin.dashboard'))->with('message', "$user->name is now administrator");
+    if ($user->save() && $user->wasChanged('is_admin')) {
+        Log::info('audit.role.assigned', [
+            'actor_id' => Auth::id(),
+            'target_user_id' => $user->id,
+            'role' => 'admin',
+        ]);
     }
 
-    public function setRevisor(User $user){
-        $user->is_revisor = true;
-        $user->save();
+    return redirect(route('admin.dashboard'))->with('message', "$user->name is now administrator");
+}
 
-        return redirect(route('admin.dashboard'))->with('message', "$user->name is now revisor");
+public function setRevisor(User $user)
+{
+    $user->is_revisor = true;
+
+    if ($user->save() && $user->wasChanged('is_revisor')) {
+        Log::info('audit.role.assigned', [
+            'actor_id' => Auth::id(),
+            'target_user_id' => $user->id,
+            'role' => 'revisor',
+        ]);
     }
 
-    public function setWriter(User $user){
-        $user->is_writer = true;
-        $user->save();
+    return redirect(route('admin.dashboard'))->with('message', "$user->name is now revisor");
+}
 
-        return redirect(route('admin.dashboard'))->with('message', "$user->name is now writer");
+public function setWriter(User $user)
+{
+    $user->is_writer = true;
+
+    if ($user->save() && $user->wasChanged('is_writer')) {
+        Log::info('audit.role.assigned', [
+            'actor_id' => Auth::id(),
+            'target_user_id' => $user->id,
+            'role' => 'writer',
+        ]);
     }
+
+    return redirect(route('admin.dashboard'))->with('message', "$user->name is now writer");
+}
 
     public function editTag(Request $request, Tag $tag){
         $request->validate([
